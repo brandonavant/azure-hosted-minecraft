@@ -53,6 +53,8 @@ mkdir -p \
 
 # Set ownership + permissions
 chown -R minecraft:minecraft "$MC_ROOT" /var/log/minecraft
+
+# TODO: Setting permissions to 750 recursively before the minecraft.service file is installed could create a security issue. The service file should have mode 0644 as mentioned in the implementation plan, but this chmod would set it to 750. Consider moving this chmod after the service file installation or excluding it from the recursive operation.
 chmod -R 750 "$MC_ROOT"
 chmod 750 /var/log/minecraft
 
@@ -115,6 +117,7 @@ grep -q "$WORLD_DIR $MC_WORLD" /etc/fstab || \
   echo "$WORLD_DIR  $MC_WORLD  none  bind  0  0" | tee -a /etc/fstab >/dev/null
 
 # Set ownership after mounts
+# TODO: Running 'chown -R' on the entire MOUNT_POINT (/mnt/mcdata) could be expensive if large world data already exists. Consider applying ownership only to newly created directories or running this conditionally on first setup to avoid performance issues on subsequent boots.
 chown -R minecraft:minecraft "$MOUNT_POINT" "$MC_WORLD"
 
 # Install systemd service (assumes cloud-init placed it at $SERVICE_SRC)

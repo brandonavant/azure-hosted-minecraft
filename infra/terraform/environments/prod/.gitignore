@@ -1,6 +1,6 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
-*.py[codz]
+*.py[cod]
 *$py.class
 
 # C extensions
@@ -212,7 +212,7 @@ crash.log
 crash.*.log
 
 # Variable files — often include credentials or environment-specific values
-**/secrets.auto.tfvars
+secrets.auto.tfvars
 
 # Override files (often local overrides not meant for VCS)
 override.tf
