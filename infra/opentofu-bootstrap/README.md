@@ -17,8 +17,8 @@ This is a one-time bootstrap you run manually from an admin's machine; not somet
 3. Creates (if missing) a **storage account** in that resource group.
 4. Creates (if missing) two **blob containers** inside that account:
 
-   * `tofu-state-dev` (for the dev environment)
-   * `tofu-state-prod` (for the prod environment)
+   * `tfstate-dev` (for the dev environment)
+   * `tfstate-prod` (for the prod environment)
 5. Prints a summary of the final names to use in your OpenTofu `backend` configuration.
 
 The script is **idempotent**: if anything already exists, it reuses it and does not delete or modify it.
@@ -44,16 +44,16 @@ You must be able to log in interactively with `az login` or already be logged in
 
 The script is configured entirely via environment variables. If you want to keep them in a file, copy `.env.example` to `.env`, fill in the real values there (leave `.env.example` unchanged), and `source .env` before running the script:
 
-* `TOFU_BACKEND_SUBSCRIPTION_ID`
+* `TF_BACKEND_SUBSCRIPTION_ID`
   The subscription ID where the backend resources will be created.
 
-* `TOFU_BACKEND_LOCATION`
+* `TF_BACKEND_LOCATION`
   Azure region for the backend resources (e.g., `eastus`, `centralus`).
 
-* `TOFU_BACKEND_PROJECT_NAME`
+* `TF_BACKEND_PROJECT_NAME`
   Short project name used as part of the naming convention (e.g., `mcserver`).
 
-* `TOFU_BACKEND_TEAM_NAME`
+* `TF_BACKEND_TEAM_NAME`
   Short team or owner name used as part of the naming convention (e.g., `plat`).
 
 All four variables are **required**. If any are missing or empty, the script exits with an error.
@@ -64,21 +64,21 @@ All four variables are **required**. If any are missing or empty, the script exi
 
 Given:
 
-* `TOFU_BACKEND_TEAM_NAME = <team>`
-* `TOFU_BACKEND_PROJECT_NAME = <project>`
+* `TF_BACKEND_TEAM_NAME = <team>`
+* `TF_BACKEND_PROJECT_NAME = <project>`
 
 the script derives:
 
 ### Resource group
 
 ```text
-rg-<team>-<project>-tofu-state
+rg-<team>-<project>-tfstate
 ```
 
 Example:
 
 ```text
-rg-plat-mcserver-tofu-state
+rg-plat-mcserver-tfstate
 ```
 
 This resource group is **only** for OpenTofu state.
@@ -103,8 +103,8 @@ If normalization produces a name shorter than 3 or longer than 24 characters, th
 
 Two containers are created in the storage account:
 
-* `tofu-state-dev`
-* `tofu-state-prod`
+* `tfstate-dev`
+* `tfstate-prod`
 
 These are used as the `container_name` values in the OpenTofu backend configuration for the dev and prod environments, respectively.
 
@@ -117,10 +117,10 @@ At a high level, `bootstrap-backend.sh`:
 1. Validates that all required environment variables are set.
 2. Verifies that the Azure CLI is installed.
 3. Verifies that you are logged in to Azure (`az account show`), and if not, prompts you to log in via `az login`.
-4. Sets the active subscription to `TOFU_BACKEND_SUBSCRIPTION_ID`.
-5. Ensures the resource group `rg-<team>-<project>-tofu-state` exists in `TOFU_BACKEND_LOCATION`.
-6. Ensures the storage account `st<team><project>tofu` (normalized) exists in that resource group.
-7. Ensures blob containers `tofu-state-dev` and `tofu-state-prod` exist in that storage account, with:
+4. Sets the active subscription to `TF_BACKEND_SUBSCRIPTION_ID`.
+5. Ensures the resource group `rg-<team>-<project>-tfstate` exists in `TF_BACKEND_LOCATION`.
+6. Ensures the storage account `st<team><project>tfstate` (normalized) exists in that resource group.
+7. Ensures blob containers `tfstate-dev` and `tfstate-prod` exist in that storage account, with:
 
    * `--public-access off`
    * `--auth-mode login`
@@ -160,10 +160,10 @@ From this directory (`infra/opentofu-bootstrap`):
 1. Set the required environment variables in your shell. For example:
 
    ```bash
-   export TOFU_BACKEND_SUBSCRIPTION_ID="<your-subscription-id>"
-   export TOFU_BACKEND_LOCATION="eastus"
-   export TOFU_BACKEND_PROJECT_NAME="mcserver"
-   export TOFU_BACKEND_TEAM_NAME="plat"
+   export TF_BACKEND_SUBSCRIPTION_ID="<your-subscription-id>"
+   export TF_BACKEND_LOCATION="eastus"
+   export TF_BACKEND_PROJECT_NAME="mcserver"
+   export TF_BACKEND_TEAM_NAME="plat"
    ```
 
 2. Run the script:
@@ -176,9 +176,9 @@ From this directory (`infra/opentofu-bootstrap`):
 
    ```text
    OpenTofu backend bootstrap completed successfully.
-   Resource Group: rg-plat-mcserver-tofu-state
-   Storage Account: stplatmcservertofu
-   Blob Containers: tofu-state-dev, tofu-state-prod
+   Resource Group: rg-plat-mcserver-tfstate
+   Storage Account: stplatmcservertfstate
+   Blob Containers: tfstate-dev, tfstate-prod
    Subscription ID: <your-subscription-id>
    Location: eastus
    ```
@@ -195,17 +195,17 @@ The mapping is:
 
 * **Dev environment backend (`environments/dev/backend.tf`):**
 
-  * `resource_group_name = rg-<team>-<project>-tofu-state`
-  * `storage_account_name = st<team><project>tofu` (normalized name)
-  * `container_name = tofu-state-dev`
-  * `key =` some dev-specific state file name (e.g., `dev.tofustate`)
+  * `resource_group_name = rg-<team>-<project>-tfstate`
+  * `storage_account_name = st<team><project>tfstate` (normalized name)
+  * `container_name = tfstate-dev`
+  * `key =` some dev-specific state file name (e.g., `dev.tfstate`)
 
 * **Prod environment backend (`environments/prod/backend.tf`):**
 
-  * `resource_group_name = rg-<team>-<project>-tofu-state`
-  * `storage_account_name = st<team><project>tofu` (same as dev)
-  * `container_name = tofu-state-prod`
-  * `key =` some prod-specific state file name (e.g., `prod.tofustate`)
+  * `resource_group_name = rg-<team>-<project>-tfstate`
+  * `storage_account_name = st<team><project>tfstate` (same as dev)
+  * `container_name = tfstate-prod`
+  * `key =` some prod-specific state file name (e.g., `prod.tfstate`)
 
 Both environments share:
 
@@ -227,16 +227,16 @@ Common issues:
 
 * The script exits with a message like:
 
-* `ERROR: Environment variable TOFU_BACKEND_PROJECT_NAME is not set.`
+* `ERROR: Environment variable TF_BACKEND_PROJECT_NAME is not set.`
 
 **Fix:**
 
 * Ensure all of the following are set before running:
 
-  * `TOFU_BACKEND_SUBSCRIPTION_ID`
-  * `TOFU_BACKEND_LOCATION`
-  * `TOFU_BACKEND_PROJECT_NAME`
-  * `TOFU_BACKEND_TEAM_NAME`
+  * `TF_BACKEND_SUBSCRIPTION_ID`
+  * `TF_BACKEND_LOCATION`
+  * `TF_BACKEND_PROJECT_NAME`
+  * `TF_BACKEND_TEAM_NAME`
 
 ---
 
@@ -264,7 +264,7 @@ Common issues:
 
 * Run `az login` and ensure:
 
-* The subscription ID in `TOFU_BACKEND_SUBSCRIPTION_ID` is valid.
+* The subscription ID in `TF_BACKEND_SUBSCRIPTION_ID` is valid.
   * Your account has access to that subscription.
 
 ---
@@ -280,7 +280,7 @@ Common issues:
 
 **Fix:**
 
-* Adjust `TOFU_BACKEND_TEAM_NAME` and/or `TOFU_BACKEND_PROJECT_NAME` so that:
+* Adjust `TF_BACKEND_TEAM_NAME` and/or `TF_BACKEND_PROJECT_NAME` so that:
 
   * After removing non-alphanumeric characters and lowercasing, the combined storage account name:
 
@@ -328,6 +328,6 @@ After running this script successfully:
    * The resource group name and storage account name printed by this script.
    * The appropriate container:
 
-     * `tofu-state-dev` for dev.
-     * `tofu-state-prod` for prod.
+     * `tfstate-dev` for dev.
+     * `tfstate-prod` for prod.
 3. Run `tofu init` in each environment directory to wire OpenTofu to the remote backend.
