@@ -5,6 +5,8 @@ trap 'echo "ERROR: bootstrap failed at line ${LINENO}" >&2' ERR
 
 echo "Starting Terraform backend bootstrap..."
 
+source .env
+
 # Ensure that the required environment variables are set
 required_vars=("TF_BACKEND_SUBSCRIPTION_ID" "TF_BACKEND_LOCATION" "TF_BACKEND_PROJECT_NAME" "TF_BACKEND_TEAM_NAME")
 for var in "${required_vars[@]}"; do
