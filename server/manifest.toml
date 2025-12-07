@@ -1,0 +1,13 @@
+[minecraft_server]
+[minecraft_server.paper]
+version = ""
+
+[minecraft_server.geyser]
+version = ""
+
+[minecraft_server.floodgate]
+version = ""
+
+[minecraft_server.ports]
+java = 25565
+bedrock = 19132
