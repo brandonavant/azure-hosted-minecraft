@@ -1,8 +1,8 @@
-# Terraform Backend Bootstrap
+# OpenTofu Backend Bootstrap
 
-This directory contains a small, idempotent bootstrap script that provisions the **Terraform remote state backend** for this project using the Azure CLI.
+This directory contains a small, idempotent bootstrap script that provisions the **OpenTofu remote state backend** for this project using the Azure CLI.
 
-The resources created here are **only** for Terraform state and are separate from the resource groups that will hold the actual Minecraft infrastructure.
+The resources created here are **only** for OpenTofu state and are separate from the resource groups that will hold the actual Minecraft infrastructure.
 
 This is a one-time bootstrap you run manually from an admin's machine; not something to wire into CI/CD. It depends on an interactive Azure login and elevated privileges, and you typically need to do it only once to create the shared remote state backend before any pipelines run.
 
@@ -13,13 +13,13 @@ This is a one-time bootstrap you run manually from an admin's machine; not somet
 `bootstrap-backend.sh`:
 
 1. Ensures you are logged in to Azure and using the correct subscription.
-2. Creates (if missing) a **resource group** dedicated to Terraform state.
+2. Creates (if missing) a **resource group** dedicated to OpenTofu state.
 3. Creates (if missing) a **storage account** in that resource group.
 4. Creates (if missing) two **blob containers** inside that account:
 
-   * `tfstate-dev` (for the dev environment)
-   * `tfstate-prod` (for the prod environment)
-5. Prints a summary of the final names to use in your Terraform `backend` configuration.
+   * `tofu-state-dev` (for the dev environment)
+   * `tofu-state-prod` (for the prod environment)
+5. Prints a summary of the final names to use in your OpenTofu `backend` configuration.
 
 The script is **idempotent**: if anything already exists, it reuses it and does not delete or modify it.
 
@@ -44,16 +44,16 @@ You must be able to log in interactively with `az login` or already be logged in
 
 The script is configured entirely via environment variables. If you want to keep them in a file, copy `.env.example` to `.env`, fill in the real values there (leave `.env.example` unchanged), and `source .env` before running the script:
 
-* `TF_BACKEND_SUBSCRIPTION_ID`
+* `TOFU_BACKEND_SUBSCRIPTION_ID`
   The subscription ID where the backend resources will be created.
 
-* `TF_BACKEND_LOCATION`
+* `TOFU_BACKEND_LOCATION`
   Azure region for the backend resources (e.g., `eastus`, `centralus`).
 
-* `TF_BACKEND_PROJECT_NAME`
+* `TOFU_BACKEND_PROJECT_NAME`
   Short project name used as part of the naming convention (e.g., `mcserver`).
 
-* `TF_BACKEND_TEAM_NAME`
+* `TOFU_BACKEND_TEAM_NAME`
   Short team or owner name used as part of the naming convention (e.g., `plat`).
 
 All four variables are **required**. If any are missing or empty, the script exits with an error.
@@ -64,29 +64,29 @@ All four variables are **required**. If any are missing or empty, the script exi
 
 Given:
 
-* `TF_BACKEND_TEAM_NAME = <team>`
-* `TF_BACKEND_PROJECT_NAME = <project>`
+* `TOFU_BACKEND_TEAM_NAME = <team>`
+* `TOFU_BACKEND_PROJECT_NAME = <project>`
 
 the script derives:
 
 ### Resource group
 
 ```text
-rg-<team>-<project>-tfstate
+rg-<team>-<project>-tofu-state
 ```
 
 Example:
 
 ```text
-rg-plat-mcserver-tfstate
+rg-plat-mcserver-tofu-state
 ```
 
-This resource group is **only** for Terraform state.
+This resource group is **only** for OpenTofu state.
 
 ### Storage account
 
 ```text
-st<team><project>tfstate
+st<team><project>tofu
 ```
 
 Then normalized to meet Azure storage account rules:
@@ -103,10 +103,10 @@ If normalization produces a name shorter than 3 or longer than 24 characters, th
 
 Two containers are created in the storage account:
 
-* `tfstate-dev`
-* `tfstate-prod`
+* `tofu-state-dev`
+* `tofu-state-prod`
 
-These are used as the `container_name` values in the Terraform backend configuration for the dev and prod environments, respectively.
+These are used as the `container_name` values in the OpenTofu backend configuration for the dev and prod environments, respectively.
 
 ---
 
@@ -117,10 +117,10 @@ At a high level, `bootstrap-backend.sh`:
 1. Validates that all required environment variables are set.
 2. Verifies that the Azure CLI is installed.
 3. Verifies that you are logged in to Azure (`az account show`), and if not, prompts you to log in via `az login`.
-4. Sets the active subscription to `TF_BACKEND_SUBSCRIPTION_ID`.
-5. Ensures the resource group `rg-<team>-<project>-tfstate` exists in `TF_BACKEND_LOCATION`.
-6. Ensures the storage account `st<team><project>tfstate` (normalized) exists in that resource group.
-7. Ensures blob containers `tfstate-dev` and `tfstate-prod` exist in that storage account, with:
+4. Sets the active subscription to `TOFU_BACKEND_SUBSCRIPTION_ID`.
+5. Ensures the resource group `rg-<team>-<project>-tofu-state` exists in `TOFU_BACKEND_LOCATION`.
+6. Ensures the storage account `st<team><project>tofu` (normalized) exists in that resource group.
+7. Ensures blob containers `tofu-state-dev` and `tofu-state-prod` exist in that storage account, with:
 
    * `--public-access off`
    * `--auth-mode login`
@@ -138,7 +138,7 @@ The script never deletes existing resources or state.
 
 ## How to run
 
-From this directory (`infra/terraform-bootstrap`):
+From this directory (`infra/opentofu-bootstrap`):
 
 ### Option 1: Using a `.env` file (recommended)
 
@@ -160,10 +160,10 @@ From this directory (`infra/terraform-bootstrap`):
 1. Set the required environment variables in your shell. For example:
 
    ```bash
-   export TF_BACKEND_SUBSCRIPTION_ID="<your-subscription-id>"
-   export TF_BACKEND_LOCATION="eastus"
-   export TF_BACKEND_PROJECT_NAME="mcserver"
-   export TF_BACKEND_TEAM_NAME="plat"
+   export TOFU_BACKEND_SUBSCRIPTION_ID="<your-subscription-id>"
+   export TOFU_BACKEND_LOCATION="eastus"
+   export TOFU_BACKEND_PROJECT_NAME="mcserver"
+   export TOFU_BACKEND_TEAM_NAME="plat"
    ```
 
 2. Run the script:
@@ -175,10 +175,10 @@ From this directory (`infra/terraform-bootstrap`):
 3. If everything succeeds, you’ll see a summary like:
 
    ```text
-   Terraform backend bootstrap completed successfully.
-   Resource Group: rg-plat-mcserver-tfstate
-   Storage Account: stplatmcservertfstate
-   Blob Containers: tfstate-dev, tfstate-prod
+   OpenTofu backend bootstrap completed successfully.
+   Resource Group: rg-plat-mcserver-tofu-state
+   Storage Account: stplatmcservertofu
+   Blob Containers: tofu-state-dev, tofu-state-prod
    Subscription ID: <your-subscription-id>
    Location: eastus
    ```
@@ -187,25 +187,25 @@ You can safely run this script multiple times. If resources already exist, it wi
 
 ---
 
-## Using the backend in Terraform environments
+## Using the backend in OpenTofu environments
 
-The Terraform environment folders (`infra/terraform/environments/dev` and `infra/terraform/environments/prod`) will use the backend resources created here.
+The OpenTofu environment folders (`infra/opentofu/environments/dev` and `infra/opentofu/environments/prod`) will use the backend resources created here.
 
 The mapping is:
 
 * **Dev environment backend (`environments/dev/backend.tf`):**
 
-  * `resource_group_name = rg-<team>-<project>-tfstate`
-  * `storage_account_name = st<team><project>tfstate` (normalized name)
-  * `container_name = tfstate-dev`
-  * `key =` some dev-specific state file name (e.g., `dev.tfstate`)
+  * `resource_group_name = rg-<team>-<project>-tofu-state`
+  * `storage_account_name = st<team><project>tofu` (normalized name)
+  * `container_name = tofu-state-dev`
+  * `key =` some dev-specific state file name (e.g., `dev.tofustate`)
 
 * **Prod environment backend (`environments/prod/backend.tf`):**
 
-  * `resource_group_name = rg-<team>-<project>-tfstate`
-  * `storage_account_name = st<team><project>tfstate` (same as dev)
-  * `container_name = tfstate-prod`
-  * `key =` some prod-specific state file name (e.g., `prod.tfstate`)
+  * `resource_group_name = rg-<team>-<project>-tofu-state`
+  * `storage_account_name = st<team><project>tofu` (same as dev)
+  * `container_name = tofu-state-prod`
+  * `key =` some prod-specific state file name (e.g., `prod.tofustate`)
 
 Both environments share:
 
@@ -213,7 +213,7 @@ Both environments share:
 * The **same** storage account.
 * **Different** containers and keys per environment.
 
-> Important: The resource group created by this script is for the **Terraform backend only**. The actual Minecraft infrastructure will live in separate resource groups created and managed by Terraform modules.
+> Important: The resource group created by this script is for the **OpenTofu backend only**. The actual Minecraft infrastructure will live in separate resource groups created and managed by OpenTofu modules.
 
 ---
 
@@ -227,16 +227,16 @@ Common issues:
 
 * The script exits with a message like:
 
-  * `ERROR: Environment variable TF_BACKEND_PROJECT_NAME is not set.`
+* `ERROR: Environment variable TOFU_BACKEND_PROJECT_NAME is not set.`
 
 **Fix:**
 
 * Ensure all of the following are set before running:
 
-  * `TF_BACKEND_SUBSCRIPTION_ID`
-  * `TF_BACKEND_LOCATION`
-  * `TF_BACKEND_PROJECT_NAME`
-  * `TF_BACKEND_TEAM_NAME`
+  * `TOFU_BACKEND_SUBSCRIPTION_ID`
+  * `TOFU_BACKEND_LOCATION`
+  * `TOFU_BACKEND_PROJECT_NAME`
+  * `TOFU_BACKEND_TEAM_NAME`
 
 ---
 
@@ -264,7 +264,7 @@ Common issues:
 
 * Run `az login` and ensure:
 
-  * The subscription ID in `TF_BACKEND_SUBSCRIPTION_ID` is valid.
+* The subscription ID in `TOFU_BACKEND_SUBSCRIPTION_ID` is valid.
   * Your account has access to that subscription.
 
 ---
@@ -280,7 +280,7 @@ Common issues:
 
 **Fix:**
 
-* Adjust `TF_BACKEND_TEAM_NAME` and/or `TF_BACKEND_PROJECT_NAME` so that:
+* Adjust `TOFU_BACKEND_TEAM_NAME` and/or `TOFU_BACKEND_PROJECT_NAME` so that:
 
   * After removing non-alphanumeric characters and lowercasing, the combined storage account name:
 
@@ -312,9 +312,9 @@ Common issues:
 
   * Delete resource groups.
   * Delete storage accounts.
-  * Delete or modify existing Terraform state blobs.
+  * Delete or modify existing OpenTofu state blobs.
 
-If you need to change the naming scheme or move state between accounts/containers, handle that carefully at the Terraform level.
+If you need to change the naming scheme or move state between accounts/containers, handle that carefully at the OpenTofu level.
 
 ---
 
@@ -322,12 +322,12 @@ If you need to change the naming scheme or move state between accounts/container
 
 After running this script successfully:
 
-1. Go to infra/terraform/environments/dev and infra/terraform/environments/prod.
+1. Go to infra/opentofu/environments/dev and infra/opentofu/environments/prod.
 
 2. Configure backend.tf in each environment to use:
    * The resource group name and storage account name printed by this script.
    * The appropriate container:
 
-     * `tfstate-dev` for dev.
-     * `tfstate-prod` for prod.
-3. Run `terraform init` in each environment directory to wire Terraform to the remote backend.
+     * `tofu-state-dev` for dev.
+     * `tofu-state-prod` for prod.
+3. Run `tofu init` in each environment directory to wire OpenTofu to the remote backend.

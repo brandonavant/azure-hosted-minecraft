@@ -3,12 +3,12 @@
 set -euo pipefail
 trap 'echo "ERROR: bootstrap failed at line ${LINENO}" >&2' ERR
 
-echo "Starting Terraform backend bootstrap..."
+echo "Starting OpenTofu backend bootstrap..."
 
 source .env
 
 # Ensure that the required environment variables are set
-required_vars=("TF_BACKEND_SUBSCRIPTION_ID" "TF_BACKEND_LOCATION" "TF_BACKEND_PROJECT_NAME" "TF_BACKEND_TEAM_NAME")
+required_vars=("TOFU_BACKEND_SUBSCRIPTION_ID" "TOFU_BACKEND_LOCATION" "TOFU_BACKEND_PROJECT_NAME" "TOFU_BACKEND_TEAM_NAME")
 for var in "${required_vars[@]}"; do
     if [[ -z "${!var:-}" ]]; then
         echo "ERROR: Environment variable ${var} is not set."
@@ -43,22 +43,22 @@ if ! az account show &> /dev/null; then
 fi
 
 # Set the subscription
-echo "Setting Azure subscription to ${TF_BACKEND_SUBSCRIPTION_ID}..."
-az account set --subscription "${TF_BACKEND_SUBSCRIPTION_ID}"
+echo "Setting Azure subscription to ${TOFU_BACKEND_SUBSCRIPTION_ID}..."
+az account set --subscription "${TOFU_BACKEND_SUBSCRIPTION_ID}"
 
-# Create resource group for Terraform backend
-CREATED_BY="terraform-bootstrap-script"
-RG_NAME="rg-${TF_BACKEND_TEAM_NAME}-${TF_BACKEND_PROJECT_NAME}-tfstate"
-RAW_STORAGE_ACCOUNT_NAME="st${TF_BACKEND_TEAM_NAME}${TF_BACKEND_PROJECT_NAME}tfstate"
+# Create resource group for OpenTofu backend
+CREATED_BY="opentofu-bootstrap-script"
+RG_NAME="rg-${TOFU_BACKEND_TEAM_NAME}-${TOFU_BACKEND_PROJECT_NAME}-tofu-state"
+RAW_STORAGE_ACCOUNT_NAME="st${TOFU_BACKEND_TEAM_NAME}${TOFU_BACKEND_PROJECT_NAME}tofu"
 STORAGE_ACCOUNT_NAME=$(normalize_storage_account_name "${RAW_STORAGE_ACCOUNT_NAME}")
-echo "Creating resource group ${RG_NAME} in ${TF_BACKEND_LOCATION}..."
+echo "Creating resource group ${RG_NAME} in ${TOFU_BACKEND_LOCATION}..."
 if az group exists --name "${RG_NAME}" | grep -q true; then
     echo "Resource group ${RG_NAME} already exists; skipping create."
 else
     az group create \
         --name "${RG_NAME}" \
-        --location "${TF_BACKEND_LOCATION}" \
-        --tags "project=${TF_BACKEND_PROJECT_NAME}" "createdBy=${CREATED_BY}"
+        --location "${TOFU_BACKEND_LOCATION}" \
+        --tags "project=${TOFU_BACKEND_PROJECT_NAME}" "createdBy=${CREATED_BY}"
 fi
 
 echo "Using storage account name ${STORAGE_ACCOUNT_NAME} (normalized from ${RAW_STORAGE_ACCOUNT_NAME})"
@@ -68,15 +68,15 @@ else
     az storage account create \
         --name "${STORAGE_ACCOUNT_NAME}" \
         --resource-group "${RG_NAME}" \
-        --location "${TF_BACKEND_LOCATION}" \
+        --location "${TOFU_BACKEND_LOCATION}" \
         --sku Standard_LRS \
         --kind StorageV2 \
-        --tags "project=${TF_BACKEND_PROJECT_NAME}" "createdBy=${CREATED_BY}"
+        --tags "project=${TOFU_BACKEND_PROJECT_NAME}" "createdBy=${CREATED_BY}"
 fi
 
-# Create blob containers for Terraform state; one for dev and one for prod
+# Create blob containers for OpenTofu state; one for dev and one for prod
 for env_name in "dev" "prod"; do
-    CONTAINER_NAME="tfstate-${env_name}"
+    CONTAINER_NAME="tofu-state-${env_name}"
     echo "Ensuring blob container ${CONTAINER_NAME} exists in storage account ${STORAGE_ACCOUNT_NAME}..."
     if az storage container show \
         --name "${CONTAINER_NAME}" \
@@ -94,9 +94,9 @@ for env_name in "dev" "prod"; do
     fi
 done
 
-echo "Terraform backend bootstrap completed successfully."
+echo "OpenTofu backend bootstrap completed successfully."
 echo "Resource Group: ${RG_NAME}"
 echo "Storage Account: ${STORAGE_ACCOUNT_NAME}"
-echo "Blob Containers: tfstate-dev, tfstate-prod"
-echo "Subscription ID: ${TF_BACKEND_SUBSCRIPTION_ID}"
-echo "Location: ${TF_BACKEND_LOCATION}"
+echo "Blob Containers: tofu-state-dev, tofu-state-prod"
+echo "Subscription ID: ${TOFU_BACKEND_SUBSCRIPTION_ID}"
+echo "Location: ${TOFU_BACKEND_LOCATION}"

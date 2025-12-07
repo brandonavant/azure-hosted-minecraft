@@ -1,15 +1,15 @@
 # Summary of what this repository builds
 
-This repo provisions and configures a cross-platform Minecraft server hosted on an Azure Linux VM, using Terraform and Cloudflare for a friendly domain name. The server is designed to support:
+This repo provisions and configures a cross-platform Minecraft server hosted on an Azure Linux VM, using OpenTofu and Cloudflare for a friendly domain name. The server is designed to support:
 
 * Bedrock clients (Xbox, PlayStation 5, Windows Bedrock)
 * Java clients (Windows/Mac Java)
 
 Cross-play is enabled by running a Paper (Java) server with Geyser + Floodgate so Bedrock players can join the Java world. The architecture is built for clean DEV/PROD parity using thin environment wrappers that call a single component module. The VM uses cloud-init to place a canonical bootstrap script and a systemd unit file, then runs the bootstrap to prepare OS packages, the minecraft service account, Java, and persistent world storage on a managed data disk with bind mounts.
 
-The server runtime composition is driven by a `server/manifest.toml` and a Python `apply.py` script (you will write) that installs/updates Paper, Geyser, Floodgate, and config files in an idempotent manner. The repo also includes a Terraform-backend bootstrap shell script that creates the Azure Storage backend resources via AZ CLI so state setup is repeatable and not manual.
+The server runtime composition is driven by a `server/manifest.toml` and a Python `apply.py` script (you will write) that installs/updates Paper, Geyser, Floodgate, and config files in an idempotent manner. The repo also includes an OpenTofu-backend bootstrap shell script that creates the Azure Storage backend resources via AZ CLI so state setup is repeatable and not manual.
 
-This is an open-source, portfolio-grade structure that avoids Terraform workspaces, avoids monolithic files, keeps secrets out of Git, and keeps environment folders thin.
+This is an open-source, portfolio-grade structure that avoids OpenTofu workspaces, avoids monolithic files, keeps secrets out of Git, and keeps environment folders thin.
 
 ---
 
@@ -18,20 +18,20 @@ This is an open-source, portfolio-grade structure that avoids Terraform workspac
 ```plaintext
 .
 ├── infra
-│   ├── terraform
+│   ├── opentofu
 │   │   ├── environments
 │   │   │   ├── dev
 │   │   │   │   ├── backend.tf
 │   │   │   │   ├── main.tf
 │   │   │   │   ├── secrets.auto.tfvars
 │   │   │   │   ├── secrets.auto.tfvars.example
-│   │   │   │   └── terraform.tfvars
+│   │   │   │   └── opentofu.auto.tfvars
 │   │   │   └── prod
 │   │   │       ├── backend.tf
 │   │   │       ├── main.tf
 │   │   │       ├── secrets.auto.tfvars
 │   │   │       ├── secrets.auto.tfvars.example
-│   │   │       └── terraform.tfvars
+│   │   │       └── opentofu.auto.tfvars
 │   │   ├── modules
 │   │   │   └── minecraft_vm
 │   │   │       ├── cloudinit.tf
@@ -48,7 +48,7 @@ This is an open-source, portfolio-grade structure that avoids Terraform workspac
 │   │   │       ├── variables.tf
 │   │   │       └── vm.tf
 │   │   └── README.md
-│   └── terraform-bootstrap
+│   └── opentofu-bootstrap
 │       ├── bootstrap-backend.sh
 │       └── README.md
 ├── server
@@ -82,7 +82,7 @@ This is an open-source, portfolio-grade structure that avoids Terraform workspac
 
 4. **Commit safe defaults, not secrets.**
 
-   * Commit `terraform.tfvars`.
+   * Commit `opentofu.auto.tfvars`.
    * Never commit `secrets.auto.tfvars`.
 
 5. **Cloud-init writes files and runs bootstrap on first boot.**
@@ -105,8 +105,8 @@ This is an open-source, portfolio-grade structure that avoids Terraform workspac
    * `LICENSE`
    * `pyproject.toml` (for the Python tooling in `server/`)
    * `server/README.md`
-   * `infra/terraform/README.md`
-   * `infra/terraform-bootstrap/README.md`
+   * `infra/opentofu/README.md`
+   * `infra/opentofu-bootstrap/README.md`
 
 2. Add `.gitignore` entries:
 
@@ -122,20 +122,20 @@ This is an open-source, portfolio-grade structure that avoids Terraform workspac
      * Azure Linux VM
      * Managed data disk for persistent world
      * Paper + Geyser + Floodgate
-     * Terraform dev/prod thin wrappers
+   * OpenTofu dev/prod thin wrappers
      * Cloudflare DNS
      * `apply.py` + `manifest.toml` runtime model
 
 ---
 
-### Phase 1 — Terraform backend bootstrap
+### Phase 1 — OpenTofu backend bootstrap
 
 Goal: eliminate manual state infrastructure setup.
 
 1. Create:
 
-   * `infra/terraform-bootstrap/bootstrap-backend.sh`
-   * `infra/terraform-bootstrap/README.md`
+   * `infra/opentofu-bootstrap/bootstrap-backend.sh`
+   * `infra/opentofu-bootstrap/README.md`
 
 2. The shell script must be idempotent and do the following:
 
@@ -144,7 +144,7 @@ Goal: eliminate manual state infrastructure setup.
 
      * resource group
      * storage account
-     * blob container for Terraform state
+     * blob container for OpenTofu state
    * Output (echo) the final names used.
 
 3. Decide a strict naming scheme:
@@ -154,15 +154,15 @@ Goal: eliminate manual state infrastructure setup.
 
 4. Documentation checkpoint:
 
-   * In `infra/terraform-bootstrap/README.md`, include:
+   * In `infra/opentofu-bootstrap/README.md`, include:
 
      * required env vars (if any)
      * default naming behavior
-     * the exact “run this before terraform init” instruction
+     * the exact “run this before tofu init” instruction
 
 ---
 
-### Phase 2 — Terraform module implementation (`minecraft_vm`)
+### Phase 2 — OpenTofu module implementation (`minecraft_vm`)
 
 Goal: component module that represents a full Minecraft server instance.
 
@@ -349,7 +349,7 @@ Goal: deterministic first-boot configuration.
 
 3. Documentation checkpoint:
 
-   * add a short explanation in `infra/terraform/README.md`
+   * add a short explanation in `infra/opentofu/README.md`
 
      * cloud-init installs bootstrap + service
      * bootstrap prepares disk + user + Java
@@ -363,8 +363,8 @@ Goal: two thin roots calling the same module.
 
 For each of:
 
-* `infra/terraform/environments/dev`
-* `infra/terraform/environments/prod`
+* `infra/opentofu/environments/dev`
+* `infra/opentofu/environments/prod`
 
 1. `backend.tf` should:
 
@@ -381,7 +381,7 @@ For each of:
      * naming prefix
      * input values sourced from variables/tfvars
 
-3. `terraform.tfvars` should contain safe defaults:
+3. `opentofu.auto.tfvars` should contain safe defaults:
 
    * VM size differences if any
    * disk size
@@ -399,13 +399,13 @@ For each of:
 
 6. Documentation checkpoint:
 
-   * in `infra/terraform/README.md`, document the exact commands:
+   * in `infra/opentofu/README.md`, document the exact commands:
 
      * run backend bootstrap script
      * `cd environments/dev`
-     * `terraform init`
-     * `terraform plan`
-     * `terraform apply`
+     * `tofu init`
+     * `tofu plan`
+     * `tofu apply`
 
 ---
 
@@ -487,18 +487,18 @@ Document:
 
 This is the exact order a new contributor should follow.
 
-1. **Bootstrap Terraform backend**
+1. **Bootstrap OpenTofu backend**
 
-   * `cd infra/terraform-bootstrap`
+   * `cd infra/opentofu-bootstrap`
    * run `bootstrap-backend.sh`
 
 2. **Provision DEV**
 
-   * `cd infra/terraform/environments/dev`
+   * `cd infra/opentofu/environments/dev`
    * create `secrets.auto.tfvars` from the example if needed
-   * `terraform init`
-   * `terraform plan`
-   * `terraform apply`
+   * `tofu init`
+   * `tofu plan`
+   * `tofu apply`
 
 3. **Validate first boot**
 
@@ -556,7 +556,7 @@ This is the exact order a new contributor should follow.
    * architecture diagram (optional)
    * quickstart section
 
-2. `infra/terraform/README.md`
+2. `infra/opentofu/README.md`
 
    * module vs env responsibilities
 
@@ -574,4 +574,3 @@ This is the exact order a new contributor should follow.
 * Do not duplicate bootstrap or service files outside module templates.
 * Keep cloud-init free of secrets.
 * Keep `apply.py` idempotent and version-driven.
-
