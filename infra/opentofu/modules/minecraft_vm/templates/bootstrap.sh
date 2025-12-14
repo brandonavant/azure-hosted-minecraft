@@ -123,7 +123,7 @@ if ! mountpoint -q "$MC_WORLD"; then
 fi
 
 # Persist the bind mount
-grep -q "$WORLD_DIR $MC_WORLD" /etc/fstab || \
+grep -q "^${WORLD_DIR}[[:space:]]" /etc/fstab || \
   echo "$WORLD_DIR  $MC_WORLD  none  bind  0  0" | tee -a /etc/fstab >/dev/null
 
 # Set ownership after mounts
