@@ -86,7 +86,7 @@ This resource group is **only** for OpenTofu state.
 ### Storage account
 
 ```text
-st<team><project>tofu
+st<team><project>tfstate
 ```
 
 Then normalized to meet Azure storage account rules:
