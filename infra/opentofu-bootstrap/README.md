@@ -193,14 +193,14 @@ The OpenTofu environment folders (`infra/opentofu/environments/dev` and `infra/o
 
 The mapping is:
 
-* **Dev environment backend (`environments/dev/backend.tf`):**
+* **Dev environment backend (`environments/dev/opentofu.tf`):**
 
   * `resource_group_name = rg-<team>-<project>-tfstate`
   * `storage_account_name = st<team><project>tfstate` (normalized name)
   * `container_name = tfstate-dev`
   * `key =` some dev-specific state file name (e.g., `dev.tfstate`)
 
-* **Prod environment backend (`environments/prod/backend.tf`):**
+* **Prod environment backend (`environments/prod/opentofu.tf`):**
 
   * `resource_group_name = rg-<team>-<project>-tfstate`
   * `storage_account_name = st<team><project>tfstate` (same as dev)

@@ -18,7 +18,5 @@ RestartSec=10
 # Minecraft can open many files (e.g., world chunks, logs, sockets); give it headroom.
 LimitNOFILE=100000
 
-Environment=MC_ENV=prod
-
 [Install]
 WantedBy=multi-user.target

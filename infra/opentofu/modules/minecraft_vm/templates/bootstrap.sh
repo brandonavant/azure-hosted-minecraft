@@ -16,6 +16,9 @@ DATA_DISK="/dev/disk/azure/scsi1/lun0"
 MOUNT_POINT="/mnt/mcdata"
 WORLD_DIR="$MOUNT_POINT/world"
 
+BOOTSTRAP_STATE_DIR="/var/lib/minecraft"
+BOOTSTRAP_MARKER="$BOOTSTRAP_STATE_DIR/bootstrap_done"
+
 MC_ROOT="/opt/minecraft"
 MC_WORLD="$MC_ROOT/world"
 
@@ -30,7 +33,7 @@ apt upgrade -y
 apt install -y curl wget unzip ca-certificates
 
 # Install Java (LTS) + Python runtime for apply.py
-apt install -y openjdk-21-jre-headless python3 python3-venv
+apt install -y openjdk-21-jre-headless python3.12 python3.12-venv python3-pip
 
 # Create the minecraft group and user (idempotent)
 getent group minecraft >/dev/null 2>&1 || groupadd --system minecraft
@@ -54,9 +57,16 @@ mkdir -p \
 # Set ownership + permissions
 chown -R minecraft:minecraft "$MC_ROOT" /var/log/minecraft
 
-# TODO: Setting permissions to 750 recursively before the minecraft.service file is installed could create a security issue. The service file should have mode 0644 as mentioned in the implementation plan, but this chmod would set it to 750. Consider moving this chmod after the service file installation or excluding it from the recursive operation.
-chmod -R 750 "$MC_ROOT"
-chmod 750 /var/log/minecraft
+# Permissions
+# - Directories under $MC_ROOT should be accessible to the minecraft user/group.
+# - Files (especially systemd unit files) should not accidentally become executable.
+chmod 750 \
+  "$MC_ROOT" \
+  "$MC_ROOT/server" \
+  "$MC_ROOT/plugins" \
+  "$MC_ROOT/config" \
+  "$MC_WORLD" \
+  /var/log/minecraft
 
 # Verify user/group
 id minecraft
@@ -117,8 +127,21 @@ grep -q "$WORLD_DIR $MC_WORLD" /etc/fstab || \
   echo "$WORLD_DIR  $MC_WORLD  none  bind  0  0" | tee -a /etc/fstab >/dev/null
 
 # Set ownership after mounts
-# TODO: Running 'chown -R' on the entire MOUNT_POINT (/mnt/mcdata) could be expensive if large world data already exists. Consider applying ownership only to newly created directories or running this conditionally on first setup to avoid performance issues on subsequent boots.
-chown -R minecraft:minecraft "$MOUNT_POINT" "$MC_WORLD"
+# Avoid expensive recursive chown on every boot; only do it on first bootstrap.
+mkdir -p "$BOOTSTRAP_STATE_DIR"
+chmod 750 "$BOOTSTRAP_STATE_DIR"
+
+if [[ ! -f "$BOOTSTRAP_MARKER" ]]; then
+  chown -R minecraft:minecraft "$WORLD_DIR" "$MC_WORLD"
+
+  if ! chown minecraft:minecraft "$WORLD_DIR" "$MC_WORLD"; then
+    echo "WARNING: Failed to chown $WORLD_DIR and $MC_WORLD to minecraft:minecraft (non-fatal)" >&2
+  fi
+  touch "$BOOTSTRAP_MARKER"
+  chmod 640 "$BOOTSTRAP_MARKER"
+else
+  chown minecraft:minecraft "$WORLD_DIR" "$MC_WORLD" || true
+fi
 
 # Install systemd service (assumes cloud-init placed it at $SERVICE_SRC)
 if [[ ! -f "$SERVICE_SRC" ]]; then
@@ -127,6 +150,10 @@ if [[ ! -f "$SERVICE_SRC" ]]; then
 fi
 
 cp "$SERVICE_SRC" /etc/systemd/system/minecraft.service
+
+# Systemd unit files should be world-readable and owned by root.
+chown root:root /etc/systemd/system/minecraft.service
+chmod 0644 /etc/systemd/system/minecraft.service
 
 systemctl daemon-reload
 systemctl enable minecraft

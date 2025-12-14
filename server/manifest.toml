@@ -1,12 +1,15 @@
 [minecraft_server]
 [minecraft_server.paper]
-version = ""
+# Minecraft Java server version / Paper line
+version = "1.21.10"
 
 [minecraft_server.geyser]
-version = ""
+# Track latest stable Geyser build compatible with this Paper version
+version = "release"
 
 [minecraft_server.floodgate]
-version = ""
+# Track latest stable Floodgate build
+version = "release"
 
 [minecraft_server.ports]
 java = 25565
