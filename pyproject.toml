@@ -5,3 +5,6 @@ description = "A tool for deploying and managing Minecraft servers on Microsoft 
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = []
+
+[tool.black]
+line-length = 120

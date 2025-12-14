@@ -6,6 +6,5 @@ terraform {
     }
   }
 
-  # TODO bavant: DITTO
-  backend "azurerm" { } # Pass in via backend.prod.hcl
+  backend "azurerm" { } # Pass in via backend.prod.hcl locally; -backend-config in GitHub Workflow
 }
