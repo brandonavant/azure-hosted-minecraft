@@ -5,6 +5,6 @@ terraform {
       version = "~>4.0"
     }
   }
-
-  backend "azurerm" { } # Pass in by CI/CD pipeline via -backend-config
+  # TODO bavant: Clarify between local and CI/CD pipeline
+  backend "azurerm" { } # Pass in via backend.dev.hcl
 }

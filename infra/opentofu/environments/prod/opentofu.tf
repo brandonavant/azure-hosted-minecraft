@@ -6,5 +6,6 @@ terraform {
     }
   }
 
-  backend "azurerm" { } # Pass in by CI/CD pipeline via -backend-config
+  # TODO bavant: DITTO
+  backend "azurerm" { } # Pass in via backend.prod.hcl
 }
